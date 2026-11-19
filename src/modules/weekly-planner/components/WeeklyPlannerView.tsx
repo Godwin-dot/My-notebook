@@ -43,6 +43,7 @@ export function WeeklyPlannerView({ leftOpen, onToggleLeft, onOpenNote }: Weekly
   const [scheduleProposal, setScheduleProposal] = useState<Array<{ taskId: string; suggestedDate: string }> | null>(null);
   const [mobileDay, setMobileDay] = useState<string | null>(null);
   const aiRequestId = useRef(0);
+  const boardRef = useRef<HTMLDivElement>(null);
   const confirm = useConfirm();
   const { disabledReason, configureService } = useAIStatus();
   const tasks = useLiveQuery(() => db.tasks.toArray()) ?? EMPTY_TASKS;
@@ -230,6 +231,8 @@ export function WeeklyPlannerView({ leftOpen, onToggleLeft, onOpenNote }: Weekly
             <button type="button" onClick={() => setWeekStart(startOfWeek(new Date()))}>Cette semaine</button>
             <button type="button" className="icon-button" aria-label="Semaine suivante" onClick={() => changeWeek(1)}><ArrowRight size={15} /></button>
           </div>
+          <button type="button" className="weekly-scroll-button" onClick={() => boardRef.current?.scrollBy({ left: -520, behavior: "smooth" })}>◀ Début</button>
+          <button type="button" className="weekly-scroll-button" onClick={() => boardRef.current?.scrollBy({ left: 520, behavior: "smooth" })}>Fin ▶</button>
           <AIActionButton className="ai-button" disabledReason={disabledReason} loading={aiLoading} onClick={() => void suggestSchedule()}>
             <Sparkles size={14} /> Suggérer un planning
           </AIActionButton>
@@ -331,8 +334,9 @@ export function WeeklyPlannerView({ leftOpen, onToggleLeft, onOpenNote }: Weekly
         </section>
       </div>
 
-      <div className="weekly-board">
-        <section
+      <div ref={boardRef} className="weekly-board-scroll">
+        <div className="weekly-board">
+          <section
           className={`planner-column planner-backlog ${hoverColumn === "backlog" ? "planner-column-over" : ""}`}
           onDragOver={(event) => allowDrop(event, "backlog")}
           onDragLeave={() => setHoverColumn(null)}
@@ -412,6 +416,7 @@ export function WeeklyPlannerView({ leftOpen, onToggleLeft, onOpenNote }: Weekly
             );
           })}
         </div>
+      </div>
       </div>
     </div>
   );
