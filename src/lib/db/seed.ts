@@ -30,7 +30,9 @@ export async function initializeDatabase(): Promise<void> {
         ...existingSettings,
         apiKey: existingSettings.apiKey.trim(),
         customEndpoint: existingSettings.customEndpoint?.trim(),
-        aiModel: existingSettings.aiModel?.trim() || defaultSettings.aiModel,
+        aiModel: existingSettings.aiModel?.trim() === "gemini-3.5-flash-lite"
+          ? "gemini-2.5-flash"
+          : (existingSettings.aiModel?.trim() || defaultSettings.aiModel),
         enabledModules: existingSettings.enabledModules.includes("ai")
           ? existingSettings.enabledModules
           : [...existingSettings.enabledModules, "ai"],

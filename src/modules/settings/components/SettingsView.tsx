@@ -68,9 +68,35 @@ const modules = [
   { id: "ai", label: "Copilote IA", description: "Actions IA explicites, à la demande" },
 ];
 
-const defaultClassificationPrompt = "Classe cette note dans la catégorie la plus pertinente.";
+const defaultClassificationPrompt = `Tu es un assistant expert en organisation de notes personnelles (PKM).
+
+Analyse la note fournie et propose :
+1. La catégorie existante la plus pertinente (sans en inventer).
+2. 3 à 5 tags précis, en minuscules, sans #, sans doublons.
+3. Un résumé exécutif en exactement 2 phrases, à la troisième personne.
+4. Les liens [[Titre]] pertinents parmi les notes existantes.
+
+Sois concis, factuel et ne paraphrase pas le contenu.`;
 const EMPTY_CATEGORIES: Category[] = [];
 const EMPTY_TEMPLATES: NoteTemplate[] = [];
+
+const MODEL_OPTIONS: Record<string, Array<{ value: string; label: string }>> = {
+  gemini: [
+    { value: "gemini-2.5-flash", label: "gemini-2.5-flash — Recommandé" },
+    { value: "gemini-2.5-flash-lite", label: "gemini-2.5-flash-lite — Ultra-rapide" },
+    { value: "gemini-2.5-pro", label: "gemini-2.5-pro — Raisonnement avancé" },
+  ],
+  openai: [
+    { value: "gpt-4o-mini", label: "gpt-4o-mini" },
+    { value: "gpt-4o", label: "gpt-4o" },
+    { value: "o4-mini", label: "o4-mini" },
+  ],
+  anthropic: [
+    { value: "claude-3-5-sonnet-latest", label: "claude-3-5-sonnet-latest" },
+    { value: "claude-3-5-haiku-latest", label: "claude-3-5-haiku-latest" },
+  ],
+  custom: [],
+};
 
 export function SettingsView({
   settings,
@@ -244,17 +270,31 @@ function AiSettings({
         </label>
         <label className="settings-field">
           <span>Modèle</span>
-          <input
-            list="ai-models"
-            value={model}
-            onChange={(event) => setModel(event.target.value)}
-            onBlur={() => void save({ aiModel: model })}
-            placeholder="Nom du modèle"
-          />
-          <datalist id="ai-models">
-            <option value="gemini-2.5-flash" /><option value="gemini-2.5-pro" />
-            <option value="gpt-4o-mini" /><option value="claude-3-5-sonnet-latest" />
-          </datalist>
+          <select
+            value={(MODEL_OPTIONS[settings.aiProvider] ?? []).some((option) => option.value === model) ? model : "__custom__"}
+            onChange={(event) => {
+              const value = event.target.value;
+              if (value === "__custom__") {
+                setModel(settings.aiModel);
+              } else {
+                setModel(value);
+                void save({ aiModel: value });
+              }
+            }}
+          >
+            {(MODEL_OPTIONS[settings.aiProvider] ?? []).map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+            <option value="__custom__">Autre (saisie libre)</option>
+          </select>
+          {!(MODEL_OPTIONS[settings.aiProvider] ?? []).some((option) => option.value === model) ? (
+            <input
+              value={model}
+              onChange={(event) => setModel(event.target.value)}
+              onBlur={() => void save({ aiModel: model })}
+              placeholder="Nom du modèle"
+            />
+          ) : null}
         </label>
         {settings.aiProvider === "custom" ? (
           <label className="settings-field settings-field-wide">

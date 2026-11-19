@@ -337,7 +337,7 @@ export function WeeklyPlannerView({ leftOpen, onToggleLeft, onOpenNote }: Weekly
       <div ref={boardRef} className="weekly-board-scroll">
         <div className="weekly-board">
           <section
-          className={`planner-column planner-backlog ${hoverColumn === "backlog" ? "planner-column-over" : ""}`}
+          className={`planner-column planner-backlog min-w-[295px] w-[295px] shrink-0 ${hoverColumn === "backlog" ? "planner-column-over" : ""}`}
           onDragOver={(event) => allowDrop(event, "backlog")}
           onDragLeave={() => setHoverColumn(null)}
           onDrop={(event) => dropTask(event, null)}
@@ -379,7 +379,7 @@ export function WeeklyPlannerView({ leftOpen, onToggleLeft, onOpenNote }: Weekly
             return (
               <section
                 key={day.date}
-                className={`planner-column planner-day-column ${day.isToday ? "planner-today ambient-glow" : ""} ${hoverColumn === day.date ? "planner-column-over" : ""}`}
+                className={`planner-column planner-day-column min-w-[295px] w-[295px] shrink-0 ${day.isToday ? "planner-today ambient-glow" : ""} ${hoverColumn === day.date ? "planner-column-over" : ""}`}
                 onDragOver={(event) => allowDrop(event, day.date)}
                 onDragLeave={() => setHoverColumn(null)}
                 onDrop={(event) => dropTask(event, day.date)}

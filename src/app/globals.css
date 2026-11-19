@@ -741,7 +741,7 @@ button:disabled { cursor: not-allowed; }
 .weekly-scroll-button:hover { color: var(--accent-color); border-color: var(--accent-color); }
 .planner-column { display: flex; min-height: 450px; flex-direction: column; border: 1px solid var(--border-subtle); border-radius: 6px; background: rgba(9, 9, 11, .65); transition: border-color 120ms ease, background 120ms ease; }
 .planner-backlog { position: sticky; z-index: 3; left: 0; width: 250px; flex: 0 0 250px; background: #09090B; }
-.planner-days { display: grid; grid-auto-columns: minmax(230px, 1fr); grid-auto-flow: column; gap: 8px; }
+.planner-days { display: grid; grid-auto-columns: 295px; grid-auto-flow: column; gap: 8px; }
 .planner-day-column { width: 198px; }
 .planner-column-over { border-color: var(--accent-color); background: color-mix(in srgb, var(--accent-muted) 34%, #09090B); }
 .planner-column-header { display: flex; height: 42px; flex: 0 0 auto; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(39, 39, 42, .78); padding: 0 10px; }

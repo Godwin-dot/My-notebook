@@ -43,7 +43,7 @@ export function EditorToolbar({ editor, disabledReason }: { editor: Editor; disa
   }
 
   return (
-    <div className="editor-toolbar no-scrollbar" role="toolbar" aria-label="Outils de rédaction">
+    <div className="editor-toolbar no-scrollbar flex items-center justify-between gap-2 flex-nowrap whitespace-nowrap" role="toolbar" aria-label="Outils de rédaction">
       <div className="editor-toolbar-group">
         <button type="button" className="editor-toolbar-task" title="Insérer une bulle de tâche" onClick={() => insertEditorBlock(editor, "task")}>
           <CheckSquare size={14} /><span>＋ Tâche</span>
