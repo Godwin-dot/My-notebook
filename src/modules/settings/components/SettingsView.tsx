@@ -80,24 +80,6 @@ Sois concis, factuel et ne paraphrase pas le contenu.`;
 const EMPTY_CATEGORIES: Category[] = [];
 const EMPTY_TEMPLATES: NoteTemplate[] = [];
 
-const MODEL_OPTIONS: Record<string, Array<{ value: string; label: string }>> = {
-  gemini: [
-    { value: "gemini-2.5-flash", label: "gemini-2.5-flash — Recommandé" },
-    { value: "gemini-2.5-flash-lite", label: "gemini-2.5-flash-lite — Ultra-rapide" },
-    { value: "gemini-2.5-pro", label: "gemini-2.5-pro — Raisonnement avancé" },
-  ],
-  openai: [
-    { value: "gpt-4o-mini", label: "gpt-4o-mini" },
-    { value: "gpt-4o", label: "gpt-4o" },
-    { value: "o4-mini", label: "o4-mini" },
-  ],
-  anthropic: [
-    { value: "claude-3-5-sonnet-latest", label: "claude-3-5-sonnet-latest" },
-    { value: "claude-3-5-haiku-latest", label: "claude-3-5-haiku-latest" },
-  ],
-  custom: [],
-};
-
 export function SettingsView({
   settings,
   onImportFolder,
@@ -270,31 +252,24 @@ function AiSettings({
         </label>
         <label className="settings-field">
           <span>Modèle</span>
-          <select
-            value={(MODEL_OPTIONS[settings.aiProvider] ?? []).some((option) => option.value === model) ? model : "__custom__"}
-            onChange={(event) => {
-              const value = event.target.value;
-              if (value === "__custom__") {
-                setModel(settings.aiModel);
-              } else {
-                setModel(value);
-                void save({ aiModel: value });
-              }
-            }}
-          >
-            {(MODEL_OPTIONS[settings.aiProvider] ?? []).map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
+          <input
+            value={model}
+            onChange={(event) => setModel(event.target.value)}
+            onBlur={() => void save({ aiModel: model })}
+            placeholder="Nom du modèle (ex: gemini-3.5-flash-lite)"
+          />
+          <div className="flex flex-wrap gap-2 mt-2">
+            {["gemini-3.5-flash-lite", "gemini-2.5-flash", "gemini-2.5-pro"].map((quick) => (
+              <button
+                key={quick}
+                type="button"
+                className="settings-inline-action"
+                onClick={() => { setModel(quick); void save({ aiModel: quick }); }}
+              >
+                {quick}
+              </button>
             ))}
-            <option value="__custom__">Autre (saisie libre)</option>
-          </select>
-          {!(MODEL_OPTIONS[settings.aiProvider] ?? []).some((option) => option.value === model) ? (
-            <input
-              value={model}
-              onChange={(event) => setModel(event.target.value)}
-              onBlur={() => void save({ aiModel: model })}
-              placeholder="Nom du modèle"
-            />
-          ) : null}
+          </div>
         </label>
         {settings.aiProvider === "custom" ? (
           <label className="settings-field settings-field-wide">
