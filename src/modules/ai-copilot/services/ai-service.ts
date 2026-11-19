@@ -1,11 +1,34 @@
 import { GoogleGenAI } from "@google/genai";
-import type { AppSettings, Category, Note, TaskItem } from "@/types/models";
+import type { AppSettings, Category, Note, PriorityLevel, TaskItem } from "@/types/models";
 
 export interface AIClassificationResult {
   suggestedCategoryId: string | null;
   suggestedTags: string[];
   summary: string;
   suggestedLinks: string[];
+}
+
+export interface AIVaultContextNote {
+  id: string;
+  title: string;
+  content: string;
+  tags: string[];
+}
+
+export interface AIVaultMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface AIVaultAnswer {
+  answer: string;
+  citedTitles: string[];
+}
+
+export interface AIExtractedTask {
+  text: string;
+  suggestedDate: string | null;
+  priority: PriorityLevel;
 }
 
 export interface AIService {
@@ -16,6 +39,8 @@ export interface AIService {
   convertIdeaToProject(rawText: string): Promise<{ title: string; content: string; tasks: string[] }>;
   suggestWeeklySchedule(backlogTasks: TaskItem[], weekDates: string[]): Promise<Array<{ taskId: string; suggestedDate: string }>>;
   generateDailyReview(dailyNote: Note, completedTasks: TaskItem[]): Promise<string>;
+  askVault(question: string, contextNotes: AIVaultContextNote[], history: AIVaultMessage[]): Promise<AIVaultAnswer>;
+  extractTasksFromText(text: string, referenceDate: string): Promise<AIExtractedTask[]>;
 }
 
 interface GenerationOptions {
@@ -163,6 +188,91 @@ class BrowserAIService implements AIService {
       "Tu aides à relire une journée avec tact, sans jugement.",
     );
     return requireText(result);
+  }
+
+  async askVault(
+    question: string,
+    contextNotes: AIVaultContextNote[],
+    history: AIVaultMessage[],
+  ): Promise<AIVaultAnswer> {
+    const normalizedQuestion = question.trim();
+    if (!normalizedQuestion) throw new Error("Posez une question pour interroger votre coffre.");
+
+    const usableNotes = contextNotes
+      .filter((note) => note.title.trim())
+      .slice(0, VAULT_MAX_NOTES)
+      .map((note) => ({
+        title: note.title.trim(),
+        tags: note.tags.slice(0, 8),
+        content: truncateForContext(note.content),
+      }));
+
+    const transcript = history
+      .slice(-8)
+      .map((message) => `${message.role === "user" ? "Utilisateur" : "Copilote"} : ${truncateForContext(message.content, 700)}`)
+      .join("\n");
+
+    const response = await this.generate(
+      [
+        `Question : ${normalizedQuestion}`,
+        transcript ? `Historique récent :\n${transcript}` : "Historique récent : aucun échange.",
+        `Notes du coffre (${usableNotes.length}) : ${JSON.stringify(usableNotes)}`,
+      ].join("\n\n"),
+      [
+        "Tu es le copilote documentaire d’un espace de notes personnel.",
+        "Règles absolues :",
+        "1. Réponds toujours en français, de façon concise et structurée en Markdown.",
+        "2. Appuie-toi en priorité sur les notes du coffre fournies dans le contexte.",
+        "3. Cite explicitement chaque note utilisée sous la forme exacte [[Titre de la note]].",
+        "4. N’invente aucun fait, aucune note et aucun titre absent du contexte.",
+        "5. Si l’information n’est pas présente dans les notes, dis-le honnêtement au lieu de deviner.",
+      ].join("\n"),
+      { maxTokens: 1200 },
+    );
+
+    const answer = requireText(response);
+    return { answer, citedTitles: extractCitedTitles(answer, usableNotes.map((note) => note.title)) };
+  }
+
+  async extractTasksFromText(text: string, referenceDate: string): Promise<AIExtractedTask[]> {
+    const source = text.trim();
+    if (!source) throw new Error("Ajoutez du texte avant d’extraire des tâches.");
+    const reference = isValidISODate(referenceDate) ? referenceDate : new Date().toISOString().slice(0, 10);
+
+    const response = await this.generate(
+      [
+        "Extrais les actions concrètes de ce texte.",
+        'Réponds uniquement avec un objet JSON : {"tasks":[{"text":string,"suggestedDate":"YYYY-MM-DD"|null,"priority":"low"|"medium"|"high"}]}.',
+        `Date de référence : ${reference}.`,
+        "Règles : une action par entrée, à l’infinitif, sans préfixe ni numérotation, 12 tâches maximum.",
+        "Ne propose une date que si le texte ou le contexte le justifie clairement (échéance, jour de la semaine, « demain »…).",
+        "Sinon, mets suggestedDate à null pour placer l’action dans le backlog. N’invente aucune action absente du texte.",
+        `Texte :\n${truncateForContext(source, 6000)}`,
+      ].join("\n"),
+      "Tu es un assistant d’extraction d’actions. Tu ne réponds qu’en JSON valide, sans commentaire.",
+      { json: true },
+    );
+
+    const value = parseJSON(response);
+    const items = Array.isArray(value.tasks) ? value.tasks : [];
+    const seen = new Set<string>();
+    const tasks: AIExtractedTask[] = [];
+    for (const item of items) {
+      if (!isRecord(item) || typeof item.text !== "string") continue;
+      const label = item.text.replace(/^[-*+\d.)\s]+/, "").trim().slice(0, 200);
+      if (!label) continue;
+      const key = label.toLocaleLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const priority: PriorityLevel = item.priority === "low" || item.priority === "high" ? item.priority : "medium";
+      tasks.push({
+        text: label,
+        suggestedDate: typeof item.suggestedDate === "string" && isValidISODate(item.suggestedDate) ? item.suggestedDate : null,
+        priority,
+      });
+      if (tasks.length >= 12) break;
+    }
+    return tasks;
   }
 
   private getSettings(): AppSettings {
@@ -341,6 +451,37 @@ function requireText(value: string): string {
   const text = value.trim();
   if (!text) throw new Error("La réponse IA est vide. Vous pouvez réessayer.");
   return text;
+}
+
+const VAULT_MAX_NOTES = 5;
+const VAULT_MAX_NOTE_CHARS = 1600;
+
+function truncateForContext(value: string, limit = VAULT_MAX_NOTE_CHARS): string {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  return normalized.length > limit ? `${normalized.slice(0, limit)}…` : normalized;
+}
+
+function extractCitedTitles(answer: string, knownTitles: string[]): string[] {
+  const byLowerCase = new Map<string, string>();
+  for (const title of knownTitles) {
+    const trimmed = title.trim();
+    if (trimmed) byLowerCase.set(trimmed.toLocaleLowerCase(), trimmed);
+  }
+  const cited: string[] = [];
+  const pattern = /\[\[([^\]\n]{1,160})\]\]/g;
+  let match = pattern.exec(answer);
+  while (match) {
+    const title = byLowerCase.get(match[1].trim().toLocaleLowerCase());
+    if (title && !cited.includes(title)) cited.push(title);
+    match = pattern.exec(answer);
+  }
+  return cited;
+}
+
+function isValidISODate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 
 function uniqueStrings(value: unknown, limit: number): string[] {

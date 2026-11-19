@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+# Serwist : artefacts générés au build (regénérés par Vercel)
+/public/sw.js
+/public/sw.js.map
+/public/swe-worker-*.js

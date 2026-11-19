@@ -1251,6 +1251,196 @@ button:disabled { cursor: not-allowed; }
 .editor-ai-toolbar .ai-action-tooltip { bottom: auto; top: calc(100% + 7px); }
 .inbox-item > .ai-proposal-card { grid-column: 1 / -1; width: 100%; margin: 2px 0 0; }
 .weekly-planner-view > .ai-proposal-card { margin: 12px 0 0; }
+
+/* --- Étape 12 : Copilote IA (Chat Coffre, extraction, bulle flottante) --- */
+.ai-proposal-secondary {
+  border: 1px solid var(--accent-color);
+  color: var(--accent-color);
+  background: transparent;
+}
+.ai-proposal-secondary:hover:not(:disabled) { background: var(--accent-muted); }
+
+.right-ai-modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  background: var(--bg-primary);
+  padding: 3px;
+}
+.right-ai-mode {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: calc(var(--radius-control) - 3px);
+  color: var(--text-secondary);
+  font-size: 10px;
+  line-height: 1.2;
+  text-align: center;
+}
+.right-ai-mode:hover { color: var(--text-primary); }
+.right-ai-mode-active {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+}
+
+.vault-chat { display: grid; gap: 10px; }
+.vault-chat-intro { color: var(--text-secondary); font-size: 10px; line-height: 1.6; }
+.vault-chat-suggestions { display: grid; gap: 6px; }
+.vault-chat-suggestion {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--radius-control);
+  padding: 8px 10px;
+  color: var(--text-secondary);
+  font-size: 10px;
+  line-height: 1.45;
+  text-align: left;
+}
+.vault-chat-suggestion:hover:not(:disabled) { border-color: var(--border-highlight); color: var(--text-primary); }
+.vault-chat-suggestion:disabled { opacity: .5; }
+
+.vault-chat-thread {
+  display: grid;
+  max-height: 46vh;
+  gap: 8px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.vault-chat-message {
+  display: grid;
+  gap: 5px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  background: var(--bg-primary);
+  padding: 9px 10px;
+}
+.vault-chat-assistant { border-color: var(--border-highlight); background: var(--bg-elevated); }
+.vault-chat-role {
+  color: var(--text-secondary);
+  font-size: 8px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.vault-chat-answer {
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+  font-size: 10px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+.vault-chat-user .vault-chat-answer { color: var(--text-secondary); }
+.vault-chat-citation {
+  display: inline;
+  color: var(--accent-color);
+  font-size: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.vault-chat-message-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.vault-chat-citations { display: inline-flex; align-items: center; gap: 4px; color: var(--text-secondary); font-size: 8px; }
+.vault-chat-save,
+.vault-chat-clear {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-secondary);
+  font-size: 9px;
+}
+.vault-chat-save:hover:not(:disabled),
+.vault-chat-clear:hover { color: var(--accent-color); }
+.vault-chat-save:disabled { color: var(--accent-color); opacity: .8; }
+.vault-chat-clear { justify-self: start; }
+.vault-chat-loading { color: var(--text-secondary); font-size: 9px; }
+
+.vault-chat-form { display: flex; gap: 6px; }
+.vault-chat-form input {
+  min-width: 0;
+  min-height: 38px;
+  flex: 1;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  background: var(--bg-primary);
+  padding: 0 10px;
+  color: var(--text-primary);
+  font-size: 11px;
+}
+.vault-chat-form input::placeholder { color: var(--text-secondary); }
+.vault-chat-form input:focus { border-color: var(--accent-color); outline: none; }
+.vault-chat-form button[type="submit"] {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: var(--radius-control);
+  background: var(--accent-color);
+  color: var(--accent-foreground);
+}
+.vault-chat-form button[type="submit"]:disabled { opacity: .45; }
+
+.task-extract-list { display: grid; gap: 6px; }
+.task-extract-row {
+  display: flex;
+  min-height: 32px;
+  align-items: flex-start;
+  gap: 8px;
+  border-radius: 5px;
+  padding: 3px 2px;
+}
+.task-extract-row:hover { background: var(--bg-card-hover); }
+.task-extract-row input { margin-top: 2px; accent-color: var(--accent-color); }
+.task-extract-text { flex: 1; color: var(--text-primary); font-size: 10px; line-height: 1.5; }
+.task-extract-meta { display: flex; flex: 0 0 auto; flex-direction: column; align-items: flex-end; gap: 3px; }
+.task-extract-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--accent-color);
+  font-size: 8px;
+  white-space: nowrap;
+}
+.task-extract-backlog { color: var(--text-secondary); }
+.task-extract-priority {
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-size: 7px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.task-extract-priority-low { background: var(--bg-card-hover); color: var(--text-secondary); }
+.task-extract-priority-medium { background: var(--accent-muted); color: var(--accent-color); }
+.task-extract-priority-high { background: rgba(248, 113, 113, .16); color: #FCA5A5; }
+.task-extract-empty { color: var(--text-secondary); font-size: 10px; }
+
+.editor-ai-toolbar {
+  z-index: 60;
+  max-width: min(92vw, 430px);
+  gap: 2px;
+  border: 1px solid var(--border-highlight);
+  border-radius: var(--radius-control);
+  background: var(--bg-elevated);
+  padding: 4px;
+  box-shadow: none;
+}
+.editor-ai-action {
+  min-height: 32px;
+  border-radius: calc(var(--radius-control) - 6px);
+  padding: 5px 8px;
+  color: var(--text-secondary);
+  font-size: 10px;
+  white-space: nowrap;
+}
+.editor-ai-action:hover:not(:disabled) { background: var(--bg-card-hover); color: var(--text-primary); }
+.editor-ai-action-accent { background: var(--accent-muted); color: var(--accent-color); }
+.editor-toolbar-ai-extract { color: var(--accent-color); }
+
 .settings-route { height: 100%; overflow: auto; padding: 18px clamp(18px, 5vw, 64px) 40px; }
 .settings-route-back { display: inline-flex; margin-bottom: 4px; color: #A1A1AA; font-size: 10px; }
 .settings-route-back:hover { color: var(--accent-color); }
@@ -1892,4 +2082,28 @@ button:disabled { cursor: not-allowed; }
   .top-bar { min-height: 52px; }
   .top-bar .icon-button { width: 40px; height: 40px; }
   .top-bar .ai-button { min-height: 38px; }
+}
+
+/* --- Étape 12 : adaptations mobiles (Chat Coffre, extraction, bulle IA) --- */
+@media (max-width: 1023px) {
+  .right-ai-mode { min-height: 44px; font-size: 11px; }
+  .vault-chat-suggestion { min-height: 44px; font-size: 11px; }
+  .vault-chat-form input,
+  .vault-chat-form button[type="submit"] { min-height: 44px; height: 44px; }
+  .vault-chat-save,
+  .vault-chat-clear { min-height: 40px; }
+  .vault-chat-thread { max-height: 52vh; }
+  .task-extract-row { min-height: 44px; }
+  .task-extract-text { font-size: 11px; }
+}
+
+@media (max-width: 600px) {
+  .editor-ai-toolbar {
+    max-width: calc(100vw - 16px);
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .editor-ai-action { min-height: 44px; padding: 8px 10px; }
+  .vault-chat-thread { max-height: 58vh; }
+  .ai-proposal-secondary { width: 100%; justify-content: center; }
 }

@@ -35,6 +35,13 @@ export function EditorToolbar({ editor, disabledReason }: { editor: Editor; disa
     setAiMenuOpen(false);
   }
 
+  function extractTasks() {
+    const { from, to } = editor.state.selection;
+    const text = from !== to ? editor.state.doc.textBetween(from, to, "\n") : null;
+    window.dispatchEvent(new CustomEvent("pkm:ai-extract-tasks", { detail: { text } }));
+    setAiMenuOpen(false);
+  }
+
   return (
     <div className="editor-toolbar no-scrollbar" role="toolbar" aria-label="Outils de rédaction">
       <div className="editor-toolbar-group">
@@ -61,6 +68,13 @@ export function EditorToolbar({ editor, disabledReason }: { editor: Editor; disa
       </div>
       <div className="editor-toolbar-ai">
         <AIActionButton
+          className="editor-toolbar-ai-trigger editor-toolbar-ai-extract"
+          disabledReason={disabledReason}
+          onClick={extractTasks}
+        >
+          <Sparkles size={14} /><span>✦ Extraire les tâches</span>
+        </AIActionButton>
+        <AIActionButton
           className="editor-toolbar-ai-trigger"
           disabledReason={disabledReason}
           ariaHasPopup="menu"
@@ -74,6 +88,7 @@ export function EditorToolbar({ editor, disabledReason }: { editor: Editor; disa
             <button type="button" role="menuitem" onClick={() => runAI("structure")}>✦ Structurer en plan</button>
             <button type="button" role="menuitem" onClick={() => runAI("rewrite")}>✦ Reformuler / Corriger</button>
             <button type="button" role="menuitem" onClick={() => runAI("continue")}>✦ Développer / Continuer</button>
+            <button type="button" role="menuitem" onClick={extractTasks}>✦ Extraire les tâches</button>
           </div>
         ) : null}
       </div>

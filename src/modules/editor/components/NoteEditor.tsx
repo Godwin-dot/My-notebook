@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
-import { BubbleMenu } from "@tiptap/react/menus";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import TaskList from "@tiptap/extension-task-list";
@@ -21,10 +20,11 @@ import { SlashCommands } from "../extensions/slash-commands";
 import { Callout } from "../extensions/callout";
 import { Wikilink } from "../extensions/wikilink";
 import { EditorToolbar } from "./EditorToolbar";
+import { EditorBubbleMenu } from "./EditorBubbleMenu";
 import { insertEditorBlock, type EditorBlockType } from "../utils/insert-block";
 import { aiService } from "@/modules/ai-copilot/services/ai-service";
-import { AIActionButton } from "@/modules/ai-copilot/components/AIActionButton";
 import { AIProposalCard } from "@/modules/ai-copilot/components/AIProposalCard";
+import { TaskExtractionCard } from "@/modules/ai-copilot/components/TaskExtractionCard";
 import { useAIStatus } from "@/modules/ai-copilot/hooks/useAIStatus";
 import { db } from "@/lib/db/dexie";
 
@@ -54,6 +54,7 @@ export function NoteEditor({ note, settings, onOutlineChange }: NoteEditorProps)
   const [proposalLoading, setProposalLoading] = useState(false);
   const [proposalError, setProposalError] = useState("");
   const [blockDropActive, setBlockDropActive] = useState(false);
+  const [taskSource, setTaskSource] = useState<string | null>(null);
   const proposalRequestId = useRef(0);
   const { disabledReason } = useAIStatus();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -152,6 +153,38 @@ export function NoteEditor({ note, settings, onOutlineChange }: NoteEditorProps)
       if (requestId === proposalRequestId.current) setProposalLoading(false);
     }
   }, [editor, settings]);
+
+  const requestTaskExtraction = useCallback((explicitText?: string | null) => {
+    if (!editor) return;
+    const { from, to } = editor.state.selection;
+    const selected = from !== to ? editor.state.doc.textBetween(from, to, "\n") : "";
+    const text = (explicitText?.trim() ? explicitText : selected) || editor.getMarkdown();
+    if (!text.trim()) {
+      setProposalError("Ajoutez du texte avant d’extraire des tâches.");
+      return;
+    }
+    setProposalError("");
+    setTaskSource(text);
+  }, [editor]);
+
+  const insertTasksInNote = useCallback(async (labels: string[]) => {
+    if (!editor) throw new Error("L’éditeur n’est pas disponible.");
+    if (!labels.length) return;
+    const markdown = `\n\n${labels.map((label) => `- [ ] ${label}`).join("\n")}\n`;
+    const end = editor.state.doc.content.size;
+    const applied = editor.chain().focus().insertContentAt(end, markdown, { contentType: "markdown" }).run();
+    if (!applied) throw new Error("Les tâches n’ont pas pu être insérées dans la note.");
+  }, [editor]);
+
+  useEffect(() => {
+    const handleExtract = (event: Event) => {
+      const detail: unknown = (event as CustomEvent<unknown>).detail;
+      const payload = typeof detail === "object" && detail !== null ? detail as { text?: unknown } : null;
+      requestTaskExtraction(typeof payload?.text === "string" ? payload.text : null);
+    };
+    window.addEventListener("pkm:ai-extract-tasks", handleExtract);
+    return () => window.removeEventListener("pkm:ai-extract-tasks", handleExtract);
+  }, [requestTaskExtraction]);
 
   useEffect(() => {
     const handleTransform = (event: Event) => {
@@ -275,30 +308,12 @@ export function NoteEditor({ note, settings, onOutlineChange }: NoteEditorProps)
     <div className="note-editor-scroll min-h-0 flex-1 overflow-y-auto">
       <div className={`note-editor-inner ${widthClass} ${fontClass}`}>
         {editor ? (
-          <BubbleMenu editor={editor} className="editor-ai-toolbar">
-            <AIActionButton className="editor-ai-action" disabledReason={disabledReason} onClick={() => {
-              const { from, to } = editor.state.selection;
-              if (from === to) return;
-              const selectedText = editor.state.doc.textBetween(from, to, "\n");
-              void prepareTransform("structure", selectedText, { from, to });
-            }}>
-              ✦ Structurer
-            </AIActionButton>
-            <AIActionButton className="editor-ai-action" disabledReason={disabledReason} onClick={() => {
-              const { from, to } = editor.state.selection;
-              if (from === to) return;
-              void prepareTransform("rewrite", editor.state.doc.textBetween(from, to, "\n"), { from, to });
-            }}>
-              ✦ Reformuler
-            </AIActionButton>
-            <AIActionButton className="editor-ai-action" disabledReason={disabledReason} onClick={() => {
-              const { from, to } = editor.state.selection;
-              if (from === to) return;
-              void prepareTransform("continue", editor.state.doc.textBetween(from, to, "\n"), { from, to });
-            }}>
-              ✦ Continuer
-            </AIActionButton>
-          </BubbleMenu>
+          <EditorBubbleMenu
+            editor={editor}
+            disabledReason={disabledReason}
+            onTransform={(instruction, text, range) => void prepareTransform(instruction, text, range)}
+            onExtractTasks={(text) => requestTaskExtraction(text)}
+          />
         ) : null}
         {editor ? <EditorToolbar editor={editor} disabledReason={disabledReason} /> : null}
         <div
@@ -345,6 +360,18 @@ export function NoteEditor({ note, settings, onOutlineChange }: NoteEditorProps)
           >
             <pre className="ai-proposal-markdown">{proposalResult}</pre>
           </AIProposalCard>
+        ) : null}
+        {taskSource ? (
+          <TaskExtractionCard
+            key={`${note.id}-${taskSource.slice(0, 40)}`}
+            sourceText={taskSource}
+            referenceDate={new Date().toISOString().slice(0, 10)}
+            noteId={note.id}
+            noteTitle={note.title}
+            insertIntoNote={insertTasksInNote}
+            prepareNoteChange={() => saveNoteSnapshot(note.id, note.title, editor?.getMarkdown() ?? note.content, "before_ai").then(() => undefined)}
+            onClose={() => setTaskSource(null)}
+          />
         ) : null}
         <p className={`editor-save-status ${saveState === "error" ? "editor-save-error" : ""}`}>
           {saveState === "error" ? "Échec de la sauvegarde locale" : saveState === "saving" ? "Sauvegarde en cours…" : "Markdown · enregistré localement"}

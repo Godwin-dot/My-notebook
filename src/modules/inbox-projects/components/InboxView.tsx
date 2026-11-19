@@ -1,13 +1,14 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Archive, ArrowUpRight, FolderInput, Sparkles } from "lucide-react";
+import { Archive, ArrowUpRight, FolderInput, ListChecks, Sparkles } from "lucide-react";
 import { LeftSidebarOpenButton } from "@/components/layout/LeftSidebarOpenButton";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db/dexie";
 import { logActivity, promoteToProject, saveNoteSnapshot, syncNoteTasks, updateNote } from "@/lib/db/repositories";
 import { AIActionButton } from "@/modules/ai-copilot/components/AIActionButton";
 import { AIProposalCard } from "@/modules/ai-copilot/components/AIProposalCard";
+import { TaskExtractionCard } from "@/modules/ai-copilot/components/TaskExtractionCard";
 import { useAIStatus } from "@/modules/ai-copilot/hooks/useAIStatus";
 import { aiService, type AIClassificationResult } from "@/modules/ai-copilot/services/ai-service";
 import type { Note } from "@/types/models";
@@ -30,6 +31,7 @@ export function InboxView({ leftOpen, onToggleLeft, onOpenNote }: InboxViewProps
   const [aiError, setAIError] = useState("");
   const [aiLoading, setAILoading] = useState(false);
   const [proposal, setProposal] = useState<InboxProposal | null>(null);
+  const [taskTarget, setTaskTarget] = useState<{ noteId: string; text: string } | null>(null);
   const aiRequestId = useRef(0);
   const { disabledReason, configureService } = useAIStatus();
   const notes = useLiveQuery(
@@ -191,6 +193,13 @@ export function InboxView({ leftOpen, onToggleLeft, onOpenNote }: InboxViewProps
                   <AIActionButton className="inbox-icon-action inbox-ai-disabled" disabledReason={disabledReason} loading={aiLoading} onClick={() => void prepareProject(note)}>
                     <Sparkles size={14} /><span>Fiche Projet</span>
                   </AIActionButton>
+                  <AIActionButton
+                    className="inbox-icon-action inbox-ai-disabled"
+                    disabledReason={disabledReason}
+                    onClick={() => setTaskTarget({ noteId: note.id, text: `${note.title}\n\n${note.content}`.trim() })}
+                  >
+                    <ListChecks size={14} /><span>✦ Tâches</span>
+                  </AIActionButton>
                 </div>
                 {proposal?.noteId === note.id ? (
                   <AIProposalCard
@@ -213,6 +222,18 @@ export function InboxView({ leftOpen, onToggleLeft, onOpenNote }: InboxViewProps
                     )}
                   </AIProposalCard>
                 ) : null}
+                {taskTarget?.noteId === note.id ? (
+                  <TaskExtractionCard
+                    key={`${taskTarget.noteId}-${taskTarget.text.slice(0, 40)}`}
+                    sourceText={taskTarget.text}
+                    referenceDate={new Date().toISOString().slice(0, 10)}
+                    noteId={note.id}
+                    noteTitle={note.title}
+                    prepareNoteChange={() => saveNoteSnapshot(note.id, note.title, note.content, "before_ai").then(() => undefined)}
+                    insertIntoNote={(labels) => insertTasksIntoInboxNote(note.id, labels)}
+                    onClose={() => setTaskTarget(null)}
+                  />
+                ) : null}
               </article>
             );
           })}
@@ -234,6 +255,15 @@ export function InboxView({ leftOpen, onToggleLeft, onOpenNote }: InboxViewProps
 type InboxProposal =
   | { kind: "classification"; noteId: string; result: AIClassificationResult }
   | { kind: "project"; noteId: string; result: { title: string; content: string; tasks: string[] } };
+
+async function insertTasksIntoInboxNote(noteId: string, labels: string[]): Promise<void> {
+  if (!labels.length) return;
+  const current = await db.notes.get(noteId);
+  if (!current) throw new Error("Cette note n’existe plus.");
+  const body = current.content.trimEnd();
+  const block = labels.map((label) => `- [ ] ${label}`).join("\n");
+  await updateNote(noteId, { content: `${body}${body ? "\n\n" : ""}${block}\n` });
+}
 
 function addProjectTasks(content: string, tasks: string[]): {
   content: string;

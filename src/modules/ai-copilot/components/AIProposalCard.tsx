@@ -10,7 +10,10 @@ interface AIProposalCardProps {
   error?: string;
   applyLabel?: string;
   applyDisabled?: boolean;
+  secondaryLabel?: string;
+  secondaryDisabled?: boolean;
   onApply: () => void;
+  onSecondary?: () => void;
   onIgnore: () => void;
 }
 
@@ -21,7 +24,10 @@ export function AIProposalCard({
   error,
   applyLabel = "Appliquer",
   applyDisabled = false,
+  secondaryLabel,
+  secondaryDisabled = false,
   onApply,
+  onSecondary,
   onIgnore,
 }: AIProposalCardProps) {
   return (
@@ -39,6 +45,11 @@ export function AIProposalCard({
         <button type="button" className="ai-proposal-apply" disabled={loading || applyDisabled || Boolean(error)} onClick={onApply}>
           <Check size={13} />{applyLabel}
         </button>
+        {secondaryLabel && onSecondary ? (
+          <button type="button" className="ai-proposal-secondary" disabled={loading || secondaryDisabled || Boolean(error)} onClick={onSecondary}>
+            {secondaryLabel}
+          </button>
+        ) : null}
         <button type="button" className="ai-proposal-ignore" disabled={loading} onClick={onIgnore}>
           <X size={13} />Ignorer
         </button>

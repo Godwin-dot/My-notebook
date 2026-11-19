@@ -8,6 +8,7 @@ import { aiService } from "@/modules/ai-copilot/services/ai-service";
 interface SlashItem extends MenuItem {
   id: string;
   aiInstruction?: "structure" | "rewrite" | "continue";
+  aiExtract?: boolean;
   run: (editor: Editor) => void;
 }
 
@@ -26,6 +27,7 @@ const commands: SlashItem[] = [
   { id: "ai-structure", label: "✦ Structurer en plan", aiInstruction: "structure", run: (editor) => dispatchAITransform(editor, "structure") },
   { id: "ai-rewrite", label: "✦ Reformuler / Corriger", aiInstruction: "rewrite", run: (editor) => dispatchAITransform(editor, "rewrite") },
   { id: "ai-continue", label: "✦ Développer / Continuer", aiInstruction: "continue", run: (editor) => dispatchAITransform(editor, "continue") },
+  { id: "ai-extract", label: "✦ Extraire les tâches", aiExtract: true, run: (editor) => dispatchAIExtract(editor) },
 ];
 
 const slashSuggestionKey = new PluginKey("slashCommandsSuggestion");
@@ -49,11 +51,16 @@ export const SlashCommands = Extension.create({
             : aiService.isConfigured() ? undefined : "Configurez le Copilote IA dans Paramètres";
           return commands
             .filter((item) => item.label.toLowerCase().includes(normalized))
-            .map((item) => item.aiInstruction
+            .map((item) => item.aiInstruction || item.aiExtract
               ? { ...item, disabled: Boolean(reason), description: reason ?? "Aperçu avant insertion" }
               : item);
         },
         command: ({ editor, range, props }) => {
+          if (props.aiExtract) {
+            editor.chain().focus().deleteRange(range).run();
+            props.run(editor);
+            return;
+          }
           if (props.aiInstruction) {
             props.run(editor);
             return;
@@ -71,5 +78,11 @@ function dispatchAITransform(editor: Editor, instruction: NonNullable<SlashItem[
   window.dispatchEvent(new CustomEvent("pkm:ai-transform", {
     detail: { instruction, text: editor.getMarkdown() },
   }));
+}
+
+function dispatchAIExtract(editor: Editor): void {
+  const { from, to } = editor.state.selection;
+  const text = from !== to ? editor.state.doc.textBetween(from, to, "\n") : null;
+  window.dispatchEvent(new CustomEvent("pkm:ai-extract-tasks", { detail: { text } }));
 }
 
