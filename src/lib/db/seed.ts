@@ -22,8 +22,27 @@ const defaultSettings: AppSettings = {
 
 export async function initializeDatabase(): Promise<void> {
   await db.transaction("rw", db.settings, db.categories, db.notes, db.templates, async () => {
-    if (!(await db.settings.get("default"))) {
+    const existingSettings = await db.settings.get("default");
+    if (!existingSettings) {
       await db.settings.add(defaultSettings);
+    } else {
+      const normalized: AppSettings = {
+        ...existingSettings,
+        apiKey: existingSettings.apiKey.trim(),
+        customEndpoint: existingSettings.customEndpoint?.trim(),
+        aiModel: existingSettings.aiModel?.trim() || defaultSettings.aiModel,
+        enabledModules: existingSettings.enabledModules.includes("ai")
+          ? existingSettings.enabledModules
+          : [...existingSettings.enabledModules, "ai"],
+      };
+      if (
+        normalized.apiKey !== existingSettings.apiKey ||
+        normalized.customEndpoint !== existingSettings.customEndpoint ||
+        normalized.aiModel !== existingSettings.aiModel ||
+        normalized.enabledModules.length !== existingSettings.enabledModules.length
+      ) {
+        await db.settings.put(normalized);
+      }
     }
 
     const dailyTemplate = await db.templates

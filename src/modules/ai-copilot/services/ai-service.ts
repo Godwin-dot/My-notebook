@@ -459,8 +459,11 @@ function resolveCustomEndpoint(value: string | undefined): string {
 
 function parseJSON(text: string): Record<string, unknown> {
   const normalized = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+  const start = normalized.indexOf("{");
+  const end = normalized.lastIndexOf("}");
+  const candidate = start >= 0 && end > start ? normalized.slice(start, end + 1) : normalized;
   try {
-    const value: unknown = JSON.parse(normalized);
+    const value: unknown = JSON.parse(candidate);
     if (isRecord(value)) return value;
   } catch {
     throw new Error("La réponse IA n’est pas un JSON valide. Vous pouvez réessayer.");
