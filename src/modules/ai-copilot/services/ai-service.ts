@@ -65,9 +65,22 @@ export function getAIUnavailableReason(settings: AppSettings | undefined, online
 
 class BrowserAIService implements AIService {
   private settings: AppSettings | undefined;
+  private settingsLoaded = false;
 
   setSettings(settings: AppSettings | undefined): void {
     this.settings = settings;
+    this.settingsLoaded = true;
+  }
+
+  private async ensureSettings(): Promise<void> {
+    if (this.settingsLoaded) return;
+    try {
+      const { db } = await import("@/lib/db/dexie");
+      this.settings = await db.settings.get("default");
+    } catch {
+      this.settings = undefined;
+    }
+    this.settingsLoaded = true;
   }
 
   isConfigured(): boolean {
@@ -75,6 +88,7 @@ class BrowserAIService implements AIService {
   }
 
   async testConnection(): Promise<{ ok: boolean; error?: string }> {
+    await this.ensureSettings();
     try {
       const response = await this.generate(
         "Réponds uniquement par le mot OK.",
@@ -89,13 +103,15 @@ class BrowserAIService implements AIService {
   }
 
   async classifyNote(note: Note, categories: Category[], existingTitles: string[]): Promise<AIClassificationResult> {
+    await this.ensureSettings();
+    const settings = await this.getSettings();
     const categoryOptions = categories.map(({ id, name, aiDescription }) => ({ id, name, description: aiDescription }));
     const response = await this.generate(
       [
         "Classe cette note et réponds uniquement avec un objet JSON conforme à ce schéma :",
         '{"suggestedCategoryId": string|null, "suggestedTags": string[], "summary": string, "suggestedLinks": string[]}.',
         "Utilise uniquement un identifiant de catégorie fourni ou null. Les liens doivent être des titres exacts de notes existantes.",
-        `Consigne personnalisée : ${this.getSettings().classificationPrompt}`,
+        `Consigne personnalisée : ${settings.classificationPrompt}`,
         `Catégories : ${JSON.stringify(categoryOptions)}`,
         `Titres de notes existantes : ${JSON.stringify(existingTitles)}`,
         `Note : ${JSON.stringify({ title: note.title, content: note.content, tags: note.tags })}`,
@@ -134,6 +150,7 @@ class BrowserAIService implements AIService {
   }
 
   async convertIdeaToProject(rawText: string): Promise<{ title: string; content: string; tasks: string[] }> {
+    await this.ensureSettings();
     const response = await this.generate(
       [
         "Convertis cette idée en fiche projet, sans inventer de faits.",
@@ -179,6 +196,7 @@ class BrowserAIService implements AIService {
   }
 
   async generateDailyReview(dailyNote: Note, completedTasks: TaskItem[]): Promise<string> {
+    await this.ensureSettings();
     const result = await this.generate(
       [
         "Rédige un bilan du jour synthétique en Markdown, à la première personne et sans ajouter de faits.",
@@ -195,6 +213,7 @@ class BrowserAIService implements AIService {
     contextNotes: AIVaultContextNote[],
     history: AIVaultMessage[],
   ): Promise<AIVaultAnswer> {
+    await this.ensureSettings();
     const normalizedQuestion = question.trim();
     if (!normalizedQuestion) throw new Error("Posez une question pour interroger votre coffre.");
 
@@ -235,6 +254,7 @@ class BrowserAIService implements AIService {
   }
 
   async extractTasksFromText(text: string, referenceDate: string): Promise<AIExtractedTask[]> {
+    await this.ensureSettings();
     const source = text.trim();
     if (!source) throw new Error("Ajoutez du texte avant d’extraire des tâches.");
     const reference = isValidISODate(referenceDate) ? referenceDate : new Date().toISOString().slice(0, 10);
@@ -275,7 +295,8 @@ class BrowserAIService implements AIService {
     return tasks;
   }
 
-  private getSettings(): AppSettings {
+  private async getSettings(): Promise<AppSettings> {
+    await this.ensureSettings();
     if (!this.settings || !isAIConfigured(this.settings)) {
       throw new Error("Configurez le Copilote IA et son fournisseur dans Paramètres.");
     }
@@ -283,7 +304,7 @@ class BrowserAIService implements AIService {
   }
 
   private async generate(prompt: string, systemInstruction: string, options: GenerationOptions = {}): Promise<string> {
-    const settings = this.getSettings();
+    const settings = await this.getSettings();
     if (typeof navigator !== "undefined" && !navigator.onLine) throw new Error("Indisponible hors ligne.");
 
     try {

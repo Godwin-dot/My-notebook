@@ -32,7 +32,7 @@ const SUGGESTIONS = [
 const MAX_CONTEXT_NOTES = 5;
 
 export function VaultChatPanel({ activeNote, onOpenNote }: VaultChatPanelProps) {
-  const { disabledReason } = useAIStatus();
+  const { disabledReason, configureService } = useAIStatus();
   const notes = useLiveQuery(() => db.notes.toArray()) ?? [];
   const [messages, setMessages] = useState<VaultMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -47,6 +47,7 @@ export function VaultChatPanel({ activeNote, onOpenNote }: VaultChatPanelProps) 
       setError(disabledReason);
       return;
     }
+    configureService();
     const history = messages.map((message) => ({ role: message.role, content: message.content }));
     setMessages((current) => [...current, { id: uuid(), role: "user", content: question }]);
     setDraft("");

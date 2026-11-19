@@ -83,7 +83,11 @@ export interface NoteFilters {
 export async function updateAppSettings(changes: Partial<Omit<AppSettings, "id">>): Promise<AppSettings> {
   const current = await db.settings.get("default");
   if (!current) throw new Error("Les paramètres de l’application ne sont pas initialisés.");
-  const updated: AppSettings = { ...current, ...changes, id: "default" };
+  const normalized = { ...changes };
+  if (typeof normalized.apiKey === "string") normalized.apiKey = normalized.apiKey.trim();
+  if (typeof normalized.customEndpoint === "string") normalized.customEndpoint = normalized.customEndpoint.trim();
+  if (typeof normalized.aiModel === "string") normalized.aiModel = normalized.aiModel.trim();
+  const updated: AppSettings = { ...current, ...normalized, id: "default" };
   await db.settings.put(updated);
   return updated;
 }

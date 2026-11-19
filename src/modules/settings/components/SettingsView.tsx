@@ -114,13 +114,19 @@ export function SettingsView({
   }
 
   async function testConnection(candidate: AppSettings) {
+    const normalized: AppSettings = {
+      ...candidate,
+      apiKey: candidate.apiKey.trim(),
+      customEndpoint: candidate.customEndpoint?.trim(),
+      aiModel: candidate.aiModel.trim(),
+    };
     setTestingKey(true);
     setNotice("");
     setError("");
-    aiService.setSettings(candidate);
+    aiService.setSettings(normalized);
     try {
       const result = await aiService.testConnection();
-      if (result.ok) setNotice("Connexion au fournisseur IA réussie.");
+      if (result.ok) setNotice(`Connexion au fournisseur IA réussie (modèle ${normalized.aiModel}).`);
       else setError(result.error ?? "La connexion au fournisseur IA a échoué.");
     } finally {
       aiService.setSettings(settings);

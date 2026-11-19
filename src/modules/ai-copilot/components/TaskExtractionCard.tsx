@@ -35,7 +35,7 @@ export function TaskExtractionCard({
   prepareNoteChange,
   onClose,
 }: TaskExtractionCardProps) {
-  const { disabledReason } = useAIStatus();
+  const { disabledReason, configureService } = useAIStatus();
   const [tasks, setTasks] = useState<AIExtractedTask[] | null>(null);
   const [selected, setSelected] = useState<boolean[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,6 +46,7 @@ export function TaskExtractionCard({
 
   useEffect(() => {
     const current = ++requestId.current;
+    configureService();
     void aiService.extractTasksFromText(sourceText, referenceDate)
       .then((result) => {
         if (current !== requestId.current) return;
@@ -60,7 +61,7 @@ export function TaskExtractionCard({
       .finally(() => {
         if (current === requestId.current) setLoading(false);
       });
-  }, [sourceText, referenceDate]);
+  }, [sourceText, referenceDate, configureService]);
 
   async function apply(mode: "note" | "week") {
     if (!tasks) return;

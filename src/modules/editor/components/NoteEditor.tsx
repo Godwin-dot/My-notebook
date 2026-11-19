@@ -56,7 +56,7 @@ export function NoteEditor({ note, settings, onOutlineChange }: NoteEditorProps)
   const [blockDropActive, setBlockDropActive] = useState(false);
   const [taskSource, setTaskSource] = useState<string | null>(null);
   const proposalRequestId = useRef(0);
-  const { disabledReason } = useAIStatus();
+  const { disabledReason, configureService } = useAIStatus();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSaveRef = useRef<(() => Promise<void>) | null>(null);
 
@@ -156,6 +156,7 @@ export function NoteEditor({ note, settings, onOutlineChange }: NoteEditorProps)
 
   const requestTaskExtraction = useCallback((explicitText?: string | null) => {
     if (!editor) return;
+    configureService();
     const { from, to } = editor.state.selection;
     const selected = from !== to ? editor.state.doc.textBetween(from, to, "\n") : "";
     const text = (explicitText?.trim() ? explicitText : selected) || editor.getMarkdown();
@@ -165,7 +166,7 @@ export function NoteEditor({ note, settings, onOutlineChange }: NoteEditorProps)
     }
     setProposalError("");
     setTaskSource(text);
-  }, [editor]);
+  }, [editor, configureService]);
 
   const insertTasksInNote = useCallback(async (labels: string[]) => {
     if (!editor) throw new Error("L’éditeur n’est pas disponible.");
