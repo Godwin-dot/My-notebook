@@ -201,6 +201,15 @@ export function LeftSidebar({ open, onToggle, onCreate, onSelect, onImportFolder
               <Upload size={16} /><span className="flex-1 text-left">Importer un dossier</span>
             </button>
           ) : null}
+          <button
+            type="button"
+            className="sidebar-link sidebar-terminal-indicator"
+            onClick={() => { closeOnMobile(); onSelect("settings"); }}
+            title="Paramètres > Modules & Données"
+          >
+            <span className="sidebar-terminal-dot" />
+            <span className="sidebar-terminal-text">LOCAL_VAULT :: READY ↗</span>
+          </button>
           {item("settings", "Paramètres", Settings)}
         </div>
       </div>

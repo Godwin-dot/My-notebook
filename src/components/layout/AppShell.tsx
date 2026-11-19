@@ -10,6 +10,7 @@ import { searchEngine } from "@/lib/search/minisearch";
 import { CommandPaletteModal } from "@/modules/inbox-projects/components/CommandPaletteModal";
 import { aiService } from "@/modules/ai-copilot/services/ai-service";
 import { applyThemeTokens } from "@/lib/theme/apply-theme-tokens";
+import { RuntimeBootScreen } from "@/components/ui/RuntimeBootScreen";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const settings = useLiveQuery(() => db.settings.get("default"));
@@ -67,6 +68,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="h-screen overflow-hidden overflow-x-hidden bg-[var(--bg-primary)] pb-20 text-[var(--text-primary)] md:pb-0">
+      <RuntimeBootScreen />
       {children}
       <CommandPaletteModal />
     </div>

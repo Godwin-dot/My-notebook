@@ -7,6 +7,7 @@ export type ThemePreset =
   | "midnight-violet"
   | "cyber-cyan"
   | "solar-amber"
+  | "runtime-brutal"
   | "custom";
 
 export interface Note {

@@ -48,8 +48,8 @@ const themePresets: Array<{
   id: Exclude<ThemePreset, "custom">;
   name: string;
   color: string;
-  surfaceStyle: NonNullable<AppSettings["surfaceStyle"]>;
-  glowIntensity: NonNullable<AppSettings["glowIntensity"]>;
+  surfaceStyle?: NonNullable<AppSettings["surfaceStyle"]>;
+  glowIntensity?: NonNullable<AppSettings["glowIntensity"]>;
 }> = [
   { id: "obsidian-lime", name: "Obsidian Lime", color: "#A3E635", surfaceStyle: "obsidian", glowIntensity: "subtle" },
   { id: "artfolio-emerald", name: "Artfolio Emerald", color: "#34D399", surfaceStyle: "obsidian", glowIntensity: "vivid" },
@@ -57,6 +57,7 @@ const themePresets: Array<{
   { id: "midnight-violet", name: "Midnight Violet", color: "#A855F7", surfaceStyle: "slate-dark", glowIntensity: "subtle" },
   { id: "cyber-cyan", name: "Cyber Cyan", color: "#22D3EE", surfaceStyle: "pure-black", glowIntensity: "vivid" },
   { id: "solar-amber", name: "Solar Amber", color: "#FBBF24", surfaceStyle: "obsidian", glowIntensity: "subtle" },
+  { id: "runtime-brutal", name: "Runtime Brutal", color: "#D9F99D" },
 ];
 
 const modules = [
@@ -341,12 +342,15 @@ function AppearanceSettings({
   const isLegacyBlue = settings.accentColor.toUpperCase() === "#3B82F6";
 
   function applyPreset(preset: (typeof themePresets)[number]) {
-    const changes = {
+    const changes: Partial<Omit<AppSettings, "id">> = {
       themePreset: preset.id,
       accentColor: preset.color,
-      surfaceStyle: preset.surfaceStyle,
-      glowIntensity: preset.glowIntensity,
     };
+    if (preset.surfaceStyle) changes.surfaceStyle = preset.surfaceStyle;
+    if (preset.glowIntensity) changes.glowIntensity = preset.glowIntensity;
+    if (preset.id === "runtime-brutal") {
+      changes.borderRadius = "sharp";
+    }
     applyThemeTokens({ ...settings, ...changes });
     void save(changes);
   }

@@ -32,6 +32,31 @@ function relativeLuminance(hexColor: string): number {
 
 export function applyThemeTokens(settings: AppSettings): void {
   const root = document.documentElement.style;
+  if (settings.themePreset === "runtime-brutal") {
+    document.documentElement.dataset.theme = "runtime-brutal";
+    document.documentElement.dataset.density = settings.density ?? "comfortable";
+    const tokens: Record<string, string> = {
+      "--bg-primary": "#000000",
+      "--bg-surface": "#070708",
+      "--bg-elevated": "#0E100E",
+      "--bg-card-hover": "#141714",
+      "--border-subtle": "#1F241F",
+      "--border-highlight": "#364234",
+      "--accent-color": "#D9F99D",
+      "--accent-foreground": "#09090B",
+      "--accent-hover": "#E5FBB3",
+      "--accent-muted": "rgba(217, 249, 157, 0.16)",
+      "--accent-glow": "rgba(217, 249, 157, 0.5)",
+      "--radius-card": "2px",
+      "--radius-control": "2px",
+      "--glow-opacity": "0.14",
+      "--font-body-family": "ui-monospace, SFMono-Regular, Menlo, monospace",
+      "--font-heading-family": "ui-monospace, SFMono-Regular, Menlo, monospace",
+    };
+    for (const [key, value] of Object.entries(tokens)) root.setProperty(key, value);
+    return;
+  }
+  document.documentElement.dataset.theme = settings.themePreset ?? "custom";
   const accent = /^#(?:[\da-f]{3}|[\da-f]{6})$/i.test(settings.accentColor)
     ? settings.accentColor
     : "#A3E635";
