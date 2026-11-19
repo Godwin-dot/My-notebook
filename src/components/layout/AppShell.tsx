@@ -66,7 +66,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [settings]);
 
   return (
-    <div className="h-screen overflow-hidden bg-[var(--bg-primary)] text-[var(--text-primary)]">
+    <div className="h-screen overflow-hidden overflow-x-hidden bg-[var(--bg-primary)] pb-20 text-[var(--text-primary)] md:pb-0">
       {children}
       <CommandPaletteModal />
     </div>

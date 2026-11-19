@@ -5,6 +5,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { Search, Trash2 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { LeftSidebar, useLeftSidebar } from "@/components/layout/LeftSidebar";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { RightPanel } from "@/components/layout/RightPanel";
 import { TopBar } from "@/components/layout/TopBar";
 import { db } from "@/lib/db/dexie";
@@ -63,6 +64,10 @@ export default function Home() {
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
       const savedRight = window.localStorage.getItem("pkm-right-open");
+      if (window.innerWidth < 1024) {
+        setRightOpen(false);
+        return;
+      }
       setRightOpen(savedRight === null ? window.innerWidth > 1100 : savedRight === "true");
     });
     return () => window.cancelAnimationFrame(frame);
@@ -315,9 +320,24 @@ export default function Home() {
     });
   }
 
+  function closeRight() {
+    setRightOpen(false);
+    window.localStorage.setItem("pkm-right-open", "false");
+  }
+
+  function openMobileMenu() {
+    closeRight();
+    window.dispatchEvent(new Event("pkm:open-left-sidebar"));
+  }
+
+  function openQuickCapture() {
+    closeRight();
+    window.dispatchEvent(new Event("pkm:open-capture"));
+  }
+
   return (
     <AppShell>
-      <main className="flex h-screen overflow-hidden">
+      <main className="flex h-full min-h-0 overflow-hidden">
         <LeftSidebar
           open={leftOpen}
           onToggle={toggleLeft}
@@ -398,6 +418,30 @@ export default function Home() {
           </div>
 
           <div className="flex min-w-0 flex-1 flex-col">
+            <div className="mobile-note-picker flex items-center gap-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 md:hidden">
+              <select
+                value={selected?.id ?? ""}
+                onChange={(event) => {
+                  clearClassification();
+                  setSelectedId(event.target.value);
+                }}
+                aria-label="Choisir une note"
+                className="min-w-0 flex-1 rounded-[var(--radius-control)] border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-xs text-[var(--text-primary)]"
+              >
+                {filteredNotes.length === 0 ? <option value="">Aucune note</option> : null}
+                {filteredNotes.map((note) => (
+                  <option key={note.id} value={note.id}>{note.title || "Sans titre"}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => void handleCreate()}
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--radius-control)] border border-[var(--border-subtle)] text-[var(--accent-color)]"
+                aria-label="Créer une note"
+              >
+                <span className="text-lg leading-none">+</span>
+              </button>
+            </div>
             <TopBar
               title={selected ? selected.title || "Sans titre" : "Aucune note"}
               leftOpen={leftOpen}
@@ -411,7 +455,7 @@ export default function Home() {
             />
             {selected ? (
               <div className="flex min-h-0 flex-1 flex-col">
-                  <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 px-6 pb-5 pt-8">
+                  <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 px-4 pb-5 pt-6 sm:px-8 sm:pt-8">
                   <div className="flex items-center gap-2">
                     <input
                       value={selected.title}
@@ -468,8 +512,15 @@ export default function Home() {
             setClassificationError("");
             setClassificationLoading(false);
           }}
+          onClose={closeRight}
         />
       </main>
+      <MobileBottomNav
+        activeView={activeView}
+        onNavigate={selectView}
+        onOpenMenu={openMobileMenu}
+        onCapture={openQuickCapture}
+      />
       <NoteHistoryModal note={selected} open={historyOpen && Boolean(selected)} onClose={() => setHistoryOpen(false)} />
       {importFolderOpen ? <ImportFolderModal onClose={() => setImportFolderOpen(false)} /> : null}
     </AppShell>

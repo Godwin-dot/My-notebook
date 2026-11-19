@@ -41,6 +41,7 @@ export function WeeklyPlannerView({ leftOpen, onToggleLeft, onOpenNote }: Weekly
   const [aiError, setAIError] = useState("");
   const [aiLoading, setAILoading] = useState(false);
   const [scheduleProposal, setScheduleProposal] = useState<Array<{ taskId: string; suggestedDate: string }> | null>(null);
+  const [mobileDay, setMobileDay] = useState<string | null>(null);
   const aiRequestId = useRef(0);
   const confirm = useConfirm();
   const { disabledReason, configureService } = useAIStatus();
@@ -75,6 +76,11 @@ export function WeeklyPlannerView({ leftOpen, onToggleLeft, onOpenNote }: Weekly
   const activeTasks = tasks.filter((task) => !task.isCompleted);
   const backlog = activeTasks.filter((task) => task.scheduledDate === null).sort((a, b) => a.order - b.order);
   const scheduledForWeek = tasks.filter((task) => task.scheduledDate && days.some((day) => day.date === task.scheduledDate));
+  const mobileDate = mobileDay ?? days.find((day) => day.isToday)?.date ?? days[0]?.date ?? "backlog";
+  const mobileTasks = mobileDate === "backlog"
+    ? backlog
+    : tasks.filter((task) => task.scheduledDate === mobileDate).sort((a, b) => a.order - b.order);
+  const mobileDraftKey = mobileDate === "backlog" ? "backlog" : mobileDate;
 
   const noteById = useMemo(() => new Map(notes.map((note) => [note.id, note])), [notes]);
   const categoryById = useMemo(() => new Map(categories.map((category) => [category.id, category])), [categories]);
@@ -252,6 +258,78 @@ export function WeeklyPlannerView({ leftOpen, onToggleLeft, onOpenNote }: Weekly
           </ul>
         </AIProposalCard>
       ) : null}
+
+      <div className="weekly-mobile-planner">
+        <div className="weekly-mobile-tabs" role="tablist" aria-label="Choisir un jour">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mobileDate === "backlog"}
+            className={`weekly-mobile-day ${mobileDate === "backlog" ? "weekly-mobile-day-active" : ""}`}
+            onClick={() => setMobileDay("backlog")}
+          >
+            <span>Backlog</span>
+            <strong>{backlog.length}</strong>
+          </button>
+          {days.map((day) => {
+            const count = tasks.filter((task) => task.scheduledDate === day.date).length;
+            return (
+              <button
+                type="button"
+                role="tab"
+                key={day.date}
+                aria-selected={mobileDate === day.date}
+                className={`weekly-mobile-day ${mobileDate === day.date ? "weekly-mobile-day-active" : ""} ${day.isToday ? "weekly-mobile-day-today" : ""}`}
+                onClick={() => setMobileDay(day.date)}
+              >
+                <span>{day.label.slice(0, 3)}</span>
+                <strong>{day.number}</strong>
+                <small>{count}</small>
+              </button>
+            );
+          })}
+        </div>
+
+        <section className={`planner-column weekly-mobile-column ${mobileDate !== "backlog" && days.find((day) => day.date === mobileDate)?.isToday ? "planner-today ambient-glow" : ""}`}>
+          <header className="planner-column-header">
+            <div className="planner-day-name">
+              <span className="planner-column-dot planner-backlog-dot" />
+              <span>{mobileDate === "backlog" ? "Backlog" : days.find((day) => day.date === mobileDate)?.label}</span>
+              {mobileDate !== "backlog" ? <strong>{days.find((day) => day.date === mobileDate)?.number}</strong> : null}
+            </div>
+            <span className="planner-task-count">{mobileTasks.length}</span>
+          </header>
+          <p className="planner-column-subtitle">{mobileDate === "backlog" ? "À planifier" : "Tâches du jour sélectionné"}</p>
+          <div className="planner-task-list">
+            {mobileTasks.map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                source={task.noteId ? noteById.get(task.noteId) : undefined}
+                sourceColor={task.noteId ? categoryById.get(noteById.get(task.noteId)?.categoryId ?? "")?.color : undefined}
+                allDays={days}
+                onDragStart={() => setDraggedTaskId(task.id)}
+                onDragEnd={() => { setDraggedTaskId(null); setHoverColumn(null); }}
+                onMove={moveTask}
+                onToggle={() => void toggle(task.id)}
+                onOpenNote={onOpenNote}
+                onDelete={() => void removeFloatingTask(task)}
+              />
+            ))}
+            {!mobileTasks.length ? (
+              <p className="planner-drop-hint">
+                {mobileDate === "backlog" ? "Le backlog est vide." : "Aucune tâche pour ce jour."}
+              </p>
+            ) : null}
+          </div>
+          <TaskComposer
+            value={drafts[mobileDraftKey] ?? ""}
+            onChange={(value) => setDrafts((current) => ({ ...current, [mobileDraftKey]: value }))}
+            onSubmit={() => void addTask(mobileDate === "backlog" ? null : mobileDate)}
+            placeholder={mobileDate === "backlog" ? "Ajouter au backlog" : "Ajouter une tâche"}
+          />
+        </section>
+      </div>
 
       <div className="weekly-board">
         <section

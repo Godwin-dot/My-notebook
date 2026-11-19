@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Blocks, FileText, Link2, Sparkles } from "lucide-react";
+import { Blocks, FileText, Link2, Sparkles, X } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db/dexie";
 import type { Note } from "@/types/models";
@@ -27,6 +27,7 @@ interface RightPanelProps {
   onClassify: () => void;
   onApplyClassification: (includeLinks: boolean) => void;
   onIgnoreClassification: () => void;
+  onClose: () => void;
 }
 
 export function RightPanel({
@@ -43,6 +44,7 @@ export function RightPanel({
   onClassify,
   onApplyClassification,
   onIgnoreClassification,
+  onClose,
 }: RightPanelProps) {
   const [includeLinks, setIncludeLinks] = useState(true);
   const categories = useLiveQuery(() => db.categories.toArray()) ?? [];
@@ -56,58 +58,64 @@ export function RightPanel({
   ] as const;
 
   return (
-    <aside data-open={open} className={`${open ? "w-[280px]" : "w-0"} sidebar-right`}>
-      <div className="min-w-[279px] h-full">
-        <div className="flex border-b border-[var(--border-subtle)]">
-          {tabs.map(([key, label, Icon]) => (
-            <button
-              type="button"
-              key={key}
-              onClick={() => onTabChange(key)}
-              className={`right-tab ${tab === key ? "right-tab-active" : ""}`}
-            >
-              <Icon size={13} />{label}
+    <>
+      {open ? <button type="button" className="panel-backdrop" aria-label="Fermer le panneau" onClick={onClose} /> : null}
+      <aside data-open={open} aria-hidden={!open} inert={!open} className={`${open ? "w-[280px]" : "w-0"} sidebar-right`}>
+        <div className="min-w-[279px] h-full">
+          <div className="flex border-b border-[var(--border-subtle)]">
+            {tabs.map(([key, label, Icon]) => (
+              <button
+                type="button"
+                key={key}
+                onClick={() => onTabChange(key)}
+                className={`right-tab ${tab === key ? "right-tab-active" : ""}`}
+              >
+                <Icon size={15} /><span>{label}</span>
+              </button>
+            ))}
+            <button type="button" className="right-panel-close" aria-label="Fermer le panneau" onClick={onClose}>
+              <X size={18} />
             </button>
-          ))}
+          </div>
+          <div className={`right-panel-content ${tab === "tools" ? "right-panel-content-tools" : ""}`}>
+            {tab === "tools" ? <ToolboxPanel note={note} onOpenNote={onOpenNote} /> : null}
+            {tab === "contents" || tab === "backlinks" ? (
+              <OutlineAndBacklinks note={note} headings={headings} section={tab} onSelectHeading={onSelectHeading} onOpenNote={onOpenNote} />
+            ) : null}
+            {tab === "ai" ? (
+              <section className="right-ai-panel">
+                <p>Les propositions restent en aperçu jusqu’à votre validation. Le contenu de la note est envoyé au fournisseur configuré.</p>
+                <AIActionButton className="ai-button" disabledReason={disabledReason} onClick={onClassify}>
+                  <Sparkles size={14} /> Classer cette note
+                </AIActionButton>
+                {classificationLoading ? (
+                  <AIProposalCard title="Classement de la note" loading onApply={() => undefined} onIgnore={onIgnoreClassification} />
+                ) : null}
+                {classificationError ? <p className="ai-proposal-error" role="alert">{classificationError}</p> : null}
+                {classification && note ? (
+                  <AIProposalCard
+                    title="Proposition de classement"
+                    onApply={() => onApplyClassification(includeLinks)}
+                    onIgnore={onIgnoreClassification}
+                  >
+                    <dl className="ai-classification-preview">
+                      <div><dt>Catégorie</dt><dd>{categories.find((category) => category.id === classification.suggestedCategoryId)?.name ?? "Aucune suggestion"}</dd></div>
+                      <div><dt>Résumé</dt><dd>{classification.summary || "Aucun résumé proposé."}</dd></div>
+                      <div><dt>Étiquettes</dt><dd>{classification.suggestedTags.length ? classification.suggestedTags.map((tag) => `#${tag}`).join(" · ") : "Aucune"}</dd></div>
+                    </dl>
+                    {classification.suggestedLinks.length ? (
+                      <label className="ai-proposal-checkbox">
+                        <input type="checkbox" checked={includeLinks} onChange={(event) => setIncludeLinks(event.target.checked)} />
+                        Ajouter les liens suggérés : {classification.suggestedLinks.join(", ")}
+                      </label>
+                    ) : null}
+                  </AIProposalCard>
+                ) : null}
+              </section>
+            ) : null}
+          </div>
         </div>
-        <div className={`right-panel-content ${tab === "tools" ? "right-panel-content-tools" : ""}`}>
-          {tab === "tools" ? <ToolboxPanel note={note} onOpenNote={onOpenNote} /> : null}
-          {tab === "contents" || tab === "backlinks" ? (
-            <OutlineAndBacklinks note={note} headings={headings} section={tab} onSelectHeading={onSelectHeading} onOpenNote={onOpenNote} />
-          ) : null}
-          {tab === "ai" ? (
-            <section className="right-ai-panel">
-              <p>Les propositions restent en aperçu jusqu’à votre validation. Le contenu de la note est envoyé au fournisseur configuré.</p>
-              <AIActionButton className="ai-button" disabledReason={disabledReason} onClick={onClassify}>
-                <Sparkles size={14} /> Classer cette note
-              </AIActionButton>
-              {classificationLoading ? (
-                <AIProposalCard title="Classement de la note" loading onApply={() => undefined} onIgnore={onIgnoreClassification} />
-              ) : null}
-              {classificationError ? <p className="ai-proposal-error" role="alert">{classificationError}</p> : null}
-              {classification && note ? (
-                <AIProposalCard
-                  title="Proposition de classement"
-                  onApply={() => onApplyClassification(includeLinks)}
-                  onIgnore={onIgnoreClassification}
-                >
-                  <dl className="ai-classification-preview">
-                    <div><dt>Catégorie</dt><dd>{categories.find((category) => category.id === classification.suggestedCategoryId)?.name ?? "Aucune suggestion"}</dd></div>
-                    <div><dt>Résumé</dt><dd>{classification.summary || "Aucun résumé proposé."}</dd></div>
-                    <div><dt>Étiquettes</dt><dd>{classification.suggestedTags.length ? classification.suggestedTags.map((tag) => `#${tag}`).join(" · ") : "Aucune"}</dd></div>
-                  </dl>
-                  {classification.suggestedLinks.length ? (
-                    <label className="ai-proposal-checkbox">
-                      <input type="checkbox" checked={includeLinks} onChange={(event) => setIncludeLinks(event.target.checked)} />
-                      Ajouter les liens suggérés : {classification.suggestedLinks.join(", ")}
-                    </label>
-                  ) : null}
-                </AIProposalCard>
-              ) : null}
-            </section>
-          ) : null}
-        </div>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 }

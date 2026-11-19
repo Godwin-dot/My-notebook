@@ -59,6 +59,16 @@ export function CommandPaletteModal() {
   }, [mode, open]);
 
   useEffect(() => {
+    const handleOpenCapture = () => {
+      setMode("capture");
+      setError("");
+      setOpen(true);
+    };
+    window.addEventListener("pkm:open-capture", handleOpenCapture);
+    return () => window.removeEventListener("pkm:open-capture", handleOpenCapture);
+  }, []);
+
+  useEffect(() => {
     if (!toast) return;
     const timeout = window.setTimeout(() => setToast(""), 3200);
     return () => window.clearTimeout(timeout);

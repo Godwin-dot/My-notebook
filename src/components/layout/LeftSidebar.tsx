@@ -17,7 +17,7 @@ interface LeftSidebarProps {
 const LEFT_SIDEBAR_STORAGE_KEY = "pkm_left_sidebar_open";
 
 export function useLeftSidebar(): [boolean, () => void] {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const interacted = useRef(false);
 
   const toggle = useCallback(() => {
@@ -36,13 +36,29 @@ export function useLeftSidebar(): [boolean, () => void] {
         saved = window.localStorage.getItem("pkm-left-open");
         if (saved !== null) window.localStorage.setItem(LEFT_SIDEBAR_STORAGE_KEY, saved);
       }
-      if (!interacted.current) setOpen(saved === null ? window.innerWidth > 760 : saved === "true");
+      if (!interacted.current) {
+        if (window.innerWidth < 768) setOpen(false);
+        else setOpen(saved === null ? window.innerWidth > 760 : saved === "true");
+      }
     });
     const handleToggle = () => toggle();
+    const handleOpen = () => {
+      interacted.current = true;
+      window.localStorage.setItem(LEFT_SIDEBAR_STORAGE_KEY, "true");
+      setOpen(true);
+    };
+    const handleClose = () => {
+      interacted.current = true;
+      setOpen(false);
+    };
     window.addEventListener("pkm:toggle-left-sidebar", handleToggle);
+    window.addEventListener("pkm:open-left-sidebar", handleOpen);
+    window.addEventListener("pkm:close-left-sidebar", handleClose);
     return () => {
       window.cancelAnimationFrame(frame);
       window.removeEventListener("pkm:toggle-left-sidebar", handleToggle);
+      window.removeEventListener("pkm:open-left-sidebar", handleOpen);
+      window.removeEventListener("pkm:close-left-sidebar", handleClose);
     };
   }, [toggle]);
 
@@ -72,10 +88,21 @@ export function LeftSidebar({ open, onToggle, onCreate, onSelect, onImportFolder
   const weeklyCount = tasks.filter((task) =>
     task.scheduledDate ? currentWeek.has(task.scheduledDate) : !task.isCompleted,
   ).length;
+  function closeOnMobile() {
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      window.dispatchEvent(new Event("pkm:close-left-sidebar"));
+    }
+  }
+
+  function selectView(view: string) {
+    onSelect(view);
+    if (open) closeOnMobile();
+  }
+
   const item = (view: string, label: string, Icon: typeof Inbox, count?: number) => (
     <button
       type="button"
-      onClick={() => onSelect(view)}
+      onClick={() => selectView(view)}
       className={`sidebar-link ${activeView === view ? "sidebar-link-active" : ""}`}
     >
       <Icon size={16} />
@@ -85,12 +112,22 @@ export function LeftSidebar({ open, onToggle, onCreate, onSelect, onImportFolder
   );
 
   return (
-    <aside
-      aria-hidden={!open}
-      inert={!open}
-      className={`sidebar-left transition-all duration-200 ${open ? "w-[240px]" : "w-0 border-r-0"}`}
-    >
-      <div className="min-w-[239px] flex h-full flex-col pb-8">
+    <>
+      {open ? (
+        <button
+          type="button"
+          className="sidebar-backdrop"
+          aria-label="Fermer le menu"
+          onClick={closeOnMobile}
+        />
+      ) : null}
+      <aside
+        aria-hidden={!open}
+        inert={!open}
+        data-open={open}
+        className={`sidebar-left transition-all duration-200 ${open ? "w-[240px]" : "w-0 border-r-0"}`}
+      >
+        <div className="sidebar-inner flex h-full min-w-[239px] flex-col pb-8">
         <div className="sidebar-identity">
           <div className="sidebar-workspace-mark">N</div>
           <div className="sidebar-workspace-copy"><strong>Notebook</strong><span>Espace local</span></div>
@@ -102,13 +139,23 @@ export function LeftSidebar({ open, onToggle, onCreate, onSelect, onImportFolder
         <button
           type="button"
           className="sidebar-search"
-          onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }))}
+          onClick={() => {
+            closeOnMobile();
+            window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }));
+          }}
         >
           <Search size={14} />
           <span>Rechercher</span>
           <kbd>⌘K · Ctrl+K</kbd>
         </button>
-        <button type="button" onClick={onCreate} className="new-note-button">
+        <button
+          type="button"
+          onClick={() => {
+            closeOnMobile();
+            onCreate();
+          }}
+          className="new-note-button"
+        >
           <Plus size={16} />
           Nouvelle note
         </button>
@@ -130,7 +177,7 @@ export function LeftSidebar({ open, onToggle, onCreate, onSelect, onImportFolder
               <button
                 type="button"
                 key={category.id}
-                onClick={() => onSelect(`category:${category.id}`)}
+                onClick={() => selectView(`category:${category.id}`)}
                 className={`sidebar-link ${activeView === `category:${category.id}` ? "sidebar-link-active" : ""}`}
               >
                 <span className="h-2 w-2 rounded-full" style={{ backgroundColor: category.color }} />
@@ -143,14 +190,22 @@ export function LeftSidebar({ open, onToggle, onCreate, onSelect, onImportFolder
 
         <div className="border-t border-[var(--border-subtle)] pt-2">
           {folderSyncEnabled ? (
-            <button type="button" onClick={onImportFolder} className="sidebar-link">
+            <button
+              type="button"
+              onClick={() => {
+                closeOnMobile();
+                onImportFolder();
+              }}
+              className="sidebar-link"
+            >
               <Upload size={16} /><span className="flex-1 text-left">Importer un dossier</span>
             </button>
           ) : null}
           {item("settings", "Paramètres", Settings)}
         </div>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }
 
